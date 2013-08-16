@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser(description='Starting from a gpx, creates an ht
 parser.add_argument('gpxfile',metavar='GPX',type=str,help="Name of the GPX File")
 parser.add_argument('-n','--name',type=str,help="Name of the output directory")
 parser.add_argument('-d', '--desc', nargs = '+', help = 'Description of Track',required=True)
-#parser.add_argument('--ftp',help="Publish to ftp",action="store_true")
+#parser.add_argument('--show',help="Shows in local browser",action="store_true")
 parser.add_argument('--ftp',help="ftp url where to publish in the form ftp://user:password@domain:/path (use ftps for FTP_TLS)",type=str)
 args = parser.parse_args()
 
@@ -103,6 +103,6 @@ if not os.path.exists(dirn):
         put_to_ftp(f,dirn,q.path,args.gpxfile)
 
         #os.system("/usr/bin/lftp -u remix@remixtj.net -e \"set ftp:ssl-allow no; mirror -R {}/ /htdocs/alpine/;exit\" dancetj.net".format(dirn))
-
+        
 else:
     print "Error creating {}/: directory exists".format(dirn)
