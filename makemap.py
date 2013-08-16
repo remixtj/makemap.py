@@ -6,9 +6,19 @@ import sys
 import os
 import datetime
 import matplotlib.pyplot as plt
+import webbrowser
+import SocketServer
+import SimpleHTTPServer
+import BaseHTTPServer
+import time
 from shutil import copyfile
 from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
+from threading import Thread
+
+
+TEMPLATE = "/home/remixtj/scripts/mappina/index.html"
+server_stop = False
 
 def put_to_ftp(conn,name,remotedir,fgpx):
     conn.cwd(remotedir)
@@ -22,15 +32,38 @@ def put_to_ftp(conn,name,remotedir,fgpx):
     conn.quit()
     conn.close()
 
+def webserver(directory,server_class=BaseHTTPServer.HTTPServer,
+                   handler_class=SimpleHTTPServer.SimpleHTTPRequestHandler):
+    PORT = 6655
+    os.chdir(directory)
+    """
+    This assumes that keep_running() is a function of no arguments which
+    is tested initially and after each request.  If its return value
+    is true, the server continues.
+    """
+    server_address = ('localhost', PORT)
+    httpd = server_class(server_address, handler_class)
+    count = 0
+    while count < 5:
+        count += 1
+        httpd.handle_request()
 
-TEMPLATE = "/home/remixtj/scripts/mappina/index.html"
+def browser():
+    try:
+        webbrowser.open('http://localhost:6655')
+    except:
+        print 'Problem opening web browser. Point your browser to http://localhost:6655'
+    
+    sys.exit(0)
+
+
 
 parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
 
 parser.add_argument('gpxfile',metavar='GPX',type=str,help="Name of the GPX File")
 parser.add_argument('-n','--name',type=str,help="Name of the output directory")
 parser.add_argument('-d', '--desc', nargs = '+', help = 'Description of Track',required=True)
-#parser.add_argument('--show',help="Shows in local browser",action="store_true")
+parser.add_argument('--show',help="Shows in local browser",action="store_true")
 parser.add_argument('--ftp',help="ftp url where to publish in the form ftp://user:password@domain:/path (use ftps for FTP_TLS)",type=str)
 args = parser.parse_args()
 
@@ -44,10 +77,13 @@ except gpxpy.gpx.GPXXMLSyntaxException:
     print "Invalid gpx file format"
     sys.exit(-1)
 
-q = urlparse(args.ftp)
 to_ftp = False
-if (q.scheme == 'ftp' or q.scheme=='ftps') and q.hostname:
-    to_ftp = True
+try:
+    q = urlparse(args.ftp)
+    if (q.scheme == 'ftp' or q.scheme=='ftps') and q.hostname:
+        to_ftp = True
+except:
+    pass
     
 
 lon = []
@@ -100,6 +136,10 @@ if not os.path.exists(dirn):
             f = FTP(q.hostname)
 
         f.login(q.username,q.password)
-        put_to_ftp(f,dirn,q.path,args.gpxfile) 
+        put_to_ftp(f,dirn,q.path,args.gpxfile)
+    if args.show:
+        Thread(target=webserver,args=(dirn,)).start()
+        browser() 
+
 else:
     print "Error creating {}/: directory exists".format(dirn)
