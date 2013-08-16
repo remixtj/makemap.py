@@ -15,6 +15,7 @@ from shutil import copyfile
 from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
 from threading import Thread
+from datetime import datetime
 
 
 TEMPLATE = "/home/remixtj/scripts/mappina/index.html"
