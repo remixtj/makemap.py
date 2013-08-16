@@ -100,9 +100,6 @@ if not os.path.exists(dirn):
             f = FTP(q.hostname)
 
         f.login(q.username,q.password)
-        put_to_ftp(f,dirn,q.path,args.gpxfile)
-
-        #os.system("/usr/bin/lftp -u remix@remixtj.net -e \"set ftp:ssl-allow no; mirror -R {}/ /htdocs/alpine/;exit\" dancetj.net".format(dirn))
-        
+        put_to_ftp(f,dirn,q.path,args.gpxfile) 
 else:
     print "Error creating {}/: directory exists".format(dirn)
