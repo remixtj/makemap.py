@@ -15,11 +15,11 @@ from shutil import copyfile
 from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
 from threading import Thread
-from datetime import datetime
 
 
 TEMPLATE = "/home/remixtj/scripts/mappina/index.html"
 server_stop = False
+do_later = False
 
 def put_to_ftp(conn,name,remotedir,fgpx):
     conn.cwd(remotedir)
@@ -132,11 +132,16 @@ if not os.path.exists(dirn):
         print("Uploading to ftp...\n\n")
         if q.scheme == 'ftps':
             f = FTP_TLS(q.hostname)
-            f.prot_p()
+            try:
+                f.prot_p()
+            except:
+                do_later = True
         else:
             f = FTP(q.hostname)
 
         f.login(q.username,q.password)
+        if do_later:
+            f.prot_p()
         put_to_ftp(f,dirn,q.path,args.gpxfile)
     if args.show:
         Thread(target=webserver,args=(dirn,)).start()
