@@ -37,11 +37,6 @@ def webserver(directory,server_class=BaseHTTPServer.HTTPServer,
                    handler_class=SimpleHTTPServer.SimpleHTTPRequestHandler):
     PORT = 6655
     os.chdir(directory)
-    """
-    This assumes that keep_running() is a function of no arguments which
-    is tested initially and after each request.  If its return value
-    is true, the server continues.
-    """
     server_address = ('localhost', PORT)
     httpd = server_class(server_address, handler_class)
     count = 0
@@ -132,16 +127,13 @@ if not os.path.exists(dirn):
         print("Uploading to ftp...\n\n")
         if q.scheme == 'ftps':
             f = FTP_TLS(q.hostname)
-            try:
-                f.prot_p()
-            except:
-                do_later = True
+            #f.set_debuglevel(2)
+            f.auth()
         else:
             f = FTP(q.hostname)
 
         f.login(q.username,q.password)
-        if do_later:
-            f.prot_p()
+        f.prot_p()
         put_to_ftp(f,dirn,q.path,args.gpxfile)
     if args.show:
         Thread(target=webserver,args=(dirn,)).start()
