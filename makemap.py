@@ -133,7 +133,8 @@ if not os.path.exists(dirn):
             f = FTP(q.hostname)
 
         f.login(q.username,q.password)
-        f.prot_p()
+        if q.scheme == 'ftps':
+            f.prot_p()
         put_to_ftp(f,dirn,q.path,args.gpxfile)
     if args.show:
         Thread(target=webserver,args=(dirn,)).start()
