@@ -26,10 +26,19 @@ def put_to_ftp(conn,name,remotedir,fgpx):
     d = os.path.dirname(name) if os.path.dirname(name) != '' else (name.split('/')[-2] if len(name.split('/'))>1 else name)
     conn.mkd(d)
     conn.cwd(remotedir+'/'+d)
+    sys.stdout.write('index.html ....')
     conn.storbinary('STOR index.html',open(name+'/index.html','rb'))
+    print(' OK')
+    sys.stdout.write('data.js ....')
     conn.storbinary('STOR data.js',open(name+'/data.js','rb'))
+    print(' OK')
+    sys.stdout.write('profilo.png ....')
     conn.storbinary('STOR profilo.png',open(name+'/profilo.png','rb'))
+    print(' OK')
+    sys.stdout.write(os.path.basename(fgpx)+' ....')
     conn.storbinary('STOR '+os.path.basename(fgpx),open(name+'/'+os.path.basename(fgpx),'rb'))
+    print(' OK')
+    print ('Upload complete')
     conn.quit()
     conn.close()
 
@@ -124,7 +133,7 @@ if not os.path.exists(dirn):
     datajs.close()
     plt.savefig(dirn+"/profilo.png")
     if to_ftp:
-        print("Uploading to ftp...\n\n")
+        print("Uploading to ftp:")
         if q.scheme == 'ftps':
             f = FTP_TLS(q.hostname)
             #f.set_debuglevel(2)
