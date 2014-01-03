@@ -1,0 +1,31 @@
+body {
+	background-color: #f8f8f8;
+}
+
+#map
+{
+    position: relative;
+    width: 95%; 
+    left: 5px;
+    top: 5px;
+    -moz-border-radius: 15px;
+    -webkit-border-top-left-radius: 15px;
+    -webkit-border-top-right-radius: 15px;
+    -webkit-border-bottom-left-radius: 15px;
+    -webkit-border-bottom-right-radius: 15px;
+    border-radius: 15px;
+    border: 1px solid black;
+    overflow: hidden;
+}
+#heading {
+  padding: 0 6px;
+}
+#heading img {
+	float: left;
+	width: 75px;
+	height: 75px;	
+}
+
+#content {
+  padding: 0 6px;
+}

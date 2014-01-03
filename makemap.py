@@ -16,8 +16,13 @@ from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
 from threading import Thread
 
+from config import TEMPLATE
+from jinja2 import Environment, FileSystemLoader
+env = Environment(loader=FileSystemLoader(os.path.dirname(TEMPLATE)))
+page = env.get_template(os.path.basename(TEMPLATE))
 
-TEMPLATE = "/home/remixtj/scripts/mappina/index.html"
+
+
 server_stop = False
 do_later = False
 
@@ -29,8 +34,17 @@ def put_to_ftp(conn,name,remotedir,fgpx):
     sys.stdout.write('index.html ....')
     conn.storbinary('STOR index.html',open(name+'/index.html','rb'))
     print(' OK')
-    sys.stdout.write('data.js ....')
-    conn.storbinary('STOR data.js',open(name+'/data.js','rb'))
+    sys.stdout.write('my.css ....')
+    conn.storbinary('STOR my.css',open(name+'/my.css','rb'))
+    print(' OK')
+    sys.stdout.write('pure-min.css ....')
+    conn.storbinary('STOR pure-min.css',open(name+'/pure-min.css','rb'))
+    print(' OK') 
+    sys.stdout.write('data.ini ....')
+    conn.storbinary('STOR data.ini',open(name+'/data.ini','rb'))
+    print(' OK') 
+    sys.stdout.write('compass.png ....')
+    conn.storbinary('STOR compass.png',open(name+'/compass.png','rb'))
     print(' OK')
     sys.stdout.write('profilo.png ....')
     conn.storbinary('STOR profilo.png',open(name+'/profilo.png','rb'))
@@ -49,7 +63,7 @@ def webserver(directory,server_class=BaseHTTPServer.HTTPServer,
     server_address = ('localhost', PORT)
     httpd = server_class(server_address, handler_class)
     count = 0
-    while count < 5:
+    while count < 6:
         count += 1
         httpd.handle_request()
 
@@ -62,6 +76,8 @@ def browser():
     sys.exit(0)
 
 
+def get_tipo():
+	return "Escursione"
 
 parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
 
@@ -103,11 +119,24 @@ for track in gpx.tracks:
             lon.append(point.longitude)
             elevation.append(point.elevation)
             pts.append(point)
-centroid = (sum(lat) / len(lat), sum(lon) / len(lon))
+
 moving_time, stopped_time, moving_distance, stopped_distance, max_speed = gpx.get_moving_data()
 in_moto = str(datetime.timedelta(seconds=moving_time))
 in_sosta = str(datetime.timedelta(seconds=stopped_time))
 totale = str(datetime.timedelta(seconds=(moving_time+stopped_time)))
+qminima = min(elevation)
+qmassima = max(elevation)
+distanza = "{0:.2f}".format(gpx.length_3d())
+uphill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[0],0))
+downhill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[1],0))
+dislivello = round(qmassima-qminima,1)
+tipo = get_tipo()
+
+start_date, end_date = gpx.get_time_bounds()
+if start_date.date() == end_date.date():
+	data = start_date.date()
+else:
+	data = "{} - {}".format(start_date.date(),end_date.date())
 
 pdsts = [ pts[i].distance_3d(pts[i-1]) if i != 0 else 0 for i in range(0,len(pts))]
 dsts = [ sum(pdsts[0:i]) for i in range(0,len(pdsts)) ]
@@ -126,12 +155,15 @@ else:
 
 if not os.path.exists(dirn):
     os.mkdir(dirn)
-    copyfile(TEMPLATE,dirn+"/index.html")
     copyfile(args.gpxfile,dirn+"/"+os.path.basename(args.gpxfile))
-    datajs = open(dirn+"/data.js","w")
-    datajs.write("var lat={}\nvar lon={}\nvar zoom=13\nvar fgpx=\"{}\"\nvar trackname=\"{}\"\nvar inmoto=\"{}\"\nvar insosta=\"{}\"\nvar totale=\"{}\"".format(centroid[0],centroid[1],os.path.basename(args.gpxfile)," ".join(args.desc),in_moto,in_sosta,totale))
-    datajs.close()
-    plt.savefig(dirn+"/profilo.png")
+    copyfile(os.path.dirname(TEMPLATE)+"/compass.png",dirn+"/compass.png")
+    copyfile(os.path.dirname(TEMPLATE)+"/my.css",dirn+"/my.css")
+    copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
+    open(dirn+"/data.ini","w").write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4]," ".join(args.desc)))
+    plt.savefig(dirn+"/profilo.png",transparent=True)
+    with open(dirn+"/index.html","w") as indexf:
+    	indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo))
+    
     if to_ftp:
         print("Uploading to ftp:")
         if q.scheme == 'ftps':

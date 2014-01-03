@@ -2,7 +2,7 @@
 
 ## Synopsis
 
-This very little python script works on a GPX file recorded with a GPS and builds an html page containing a map showing the path and an altimetric profile and data about the duration of the excursion. If specified as parameter, uploads everything to an ftp site.
+This very little python script works on a GPX file recorded with a GPS and builds an html page containing a map showing the path and an altimetric profile and data about the trop. If specified as parameter, uploads everything to an ftp site.
 
 ## License
  
