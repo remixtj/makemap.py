@@ -39,10 +39,10 @@ def put_to_ftp(conn,name,remotedir,fgpx):
     print(' OK')
     sys.stdout.write('pure-min.css ....')
     conn.storbinary('STOR pure-min.css',open(name+'/pure-min.css','rb'))
-    print(' OK') 
+    print(' OK')
     sys.stdout.write('data.ini ....')
     conn.storbinary('STOR data.ini',open(name+'/data.ini','rb'))
-    print(' OK') 
+    print(' OK')
     sys.stdout.write('compass.png ....')
     conn.storbinary('STOR compass.png',open(name+'/compass.png','rb'))
     print(' OK')
@@ -65,7 +65,7 @@ def webserver(directory,server_class=BaseHTTPServer.HTTPServer,
     count = 0
     nfiles = 0
     for d,p,f in os.walk('.'):
-	    nfiles += len(f)
+        nfiles += len(f)
     while count < nfiles+1:
         count += 1
         httpd.handle_request()
@@ -75,12 +75,12 @@ def browser():
         webbrowser.open('http://localhost:6655')
     except:
         print 'Problem opening web browser. Point your browser to http://localhost:6655'
-    
+
     sys.exit(0)
 
 
 def get_tipo():
-	return "Escursione"
+    return "Escursione"
 
 parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
 
@@ -110,7 +110,7 @@ try:
         to_ftp = True
 except:
     pass
-    
+
 
 lon = []
 lat = []
@@ -139,9 +139,9 @@ tipo = get_tipo()
 
 start_date, end_date = gpx.get_time_bounds()
 if start_date.date() == end_date.date():
-	data = start_date.date()
+    data = start_date.date()
 else:
-	data = "{} - {}".format(start_date.date(),end_date.date())
+    data = "{} - {}".format(start_date.date(),end_date.date())
 
 pdsts = [ pts[i].distance_3d(pts[i-1]) if i != 0 else 0 for i in range(0,len(pts))]
 dsts = [ sum(pdsts[0:i]) for i in range(0,len(pdsts)) ]
@@ -165,12 +165,12 @@ if not os.path.exists(dirn):
     copyfile(os.path.dirname(TEMPLATE)+"/my.css",dirn+"/my.css")
     copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
     if args.photofile:
-	    copyfile(args.photofile,dirn+"/"+args.photofile)
+        copyfile(args.photofile,dirn+"/"+args.photofile)
     open(dirn+"/data.ini","w").write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4]," ".join(args.desc)))
     plt.savefig(dirn+"/profilo.png",transparent=True)
     with open(dirn+"/index.html","w") as indexf:
-    	indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo,photofile=args.photofile))
-    
+        indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo,photofile=args.photofile))
+
     if to_ftp:
         print("Uploading to ftp:")
         if q.scheme == 'ftps':
@@ -186,7 +186,7 @@ if not os.path.exists(dirn):
         put_to_ftp(f,dirn,q.path,args.gpxfile)
     if args.show:
         Thread(target=webserver,args=(dirn,)).start()
-        browser() 
+        browser()
 
 else:
     print "Error creating {}/: directory exists".format(dirn)

@@ -1,238 +1,251 @@
 <html>
+
 <head>
-	<!-- Source: http://wiki.openstreetmap.org/wiki/Openlayers_Track_example -->
-	<title>{{ trackname }}</title>
-	<link href="pure-min.css" rel="stylesheet" />
-	<link href="my.css" rel="stylesheet" />
-	<!-- bring in the OpenLayers javascript library
+    <!-- Source: http://wiki.openstreetmap.org/wiki/Openlayers_Track_example -->
+    <title>{{ trackname }}</title>
+    <link href="pure-min.css" rel="stylesheet" />
+    <link href="my.css" rel="stylesheet" />
+    <!-- bring in the OpenLayers javascript library
 		 (here we bring it from the remote site, but you could
 		 easily serve up this javascript yourself) -->
-	<script src="http://www.openlayers.org/api/OpenLayers.js"></script>
-	<!-- bring in the OpenStreetMap OpenLayers layers.
+    <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
+    <!-- bring in the OpenStreetMap OpenLayers layers.
 		 Using this hosted file will make sure we are kept up
 		 to date with any necessary changes -->
-	<script src="http://www.openstreetmap.org/openlayers/OpenStreetMap.js"></script>
+    <script src="http://www.openstreetmap.org/openlayers/OpenStreetMap.js"></script>
 
-	<script type="text/javascript">
-		// Start position for the map (hardcoded here for simplicity,
-		// but maybe you want to get this from the URL params)
-		var map; //complex object of type OpenLayers.Mapvar routeGpx, map;
-	
-		function setNewMapCenter(){
-		  if (routeGpx.features.length > 0) {
-			  layerBounds = routeGpx.features[0].geometry.getBounds();
-		  	  for (var i=0;i<routeGpx.features.length;i++){
-			    thisBounds = routeGpx.features[i].geometry.getBounds();
-			    layerBounds.top = Math.max(thisBounds.top,layerBounds.top);
-			    layerBounds.bottom = Math.min(thisBounds.bottom,layerBounds.bottom);
-			    layerBounds.left = Math.min(thisBounds.left,layerBounds.left);
-			    layerBounds.right = Math.max(thisBounds.right,layerBounds.right);
-			  }
-			    mapCenter = layerBounds.getCenterLonLat();
-			    mapZoom = map.getZoomForExtent(layerBounds, false);
-			    map.setCenter(mapCenter, mapZoom); 
-		  }
-		}
+    <script type="text/javascript">
+        // Start position for the map (hardcoded here for simplicity,
+         // but maybe you want to get this from the URL params)
+        var map; //complex object of type OpenLayers.Mapvar routeGpx, map;
 
-function onPopupClose(evt) {
-    // 'this' is the popup.
-    selector.unselect(this.feature);
-}
-function returnText(feat) {
-	if (!feat.cluster) {
-		return '<h2>'+ feat.attributes.title + '</h2>'+ feature.attributes.description;
-	} else {
-		title = feat.cluster.length + " Images";
-		text = '<div width="200px">';
-		for (var count = 0; count < feat.cluster.length; count++) {
-			text = text+'<h3>'+feature.cluster[count].attributes.title+'</h3>'+feature.cluster[count].attributes.description;
-		}
-		text = text+'</div>';
-		return text;
-	}
-}
+        function setNewMapCenter() {
+            if (routeGpx.features.length > 0) {
+                layerBounds = routeGpx.features[0].geometry.getBounds();
+                for (var i = 0; i < routeGpx.features.length; i++) {
+                    thisBounds = routeGpx.features[i].geometry.getBounds();
+                    layerBounds.top = Math.max(thisBounds.top, layerBounds.top);
+                    layerBounds.bottom = Math.min(thisBounds.bottom, layerBounds.bottom);
+                    layerBounds.left = Math.min(thisBounds.left, layerBounds.left);
+                    layerBounds.right = Math.max(thisBounds.right, layerBounds.right);
+                }
+                mapCenter = layerBounds.getCenterLonLat();
+                mapZoom = map.getZoomForExtent(layerBounds, false);
+                map.setCenter(mapCenter, mapZoom);
+            }
+        }
 
-function onFeatureSelect(evt) {
-    feature = evt.feature;
-    popup = new OpenLayers.Popup.FramedCloud("featurePopup",
-                             feature.geometry.getBounds().getCenterLonLat(),
-                             new OpenLayers.Size(150,100),
-			     returnText(feature),
-                             null, true, onPopupClose);
-    feature.popup = popup;
-    popup.feature = feature;
-    popup.autosize = false;
-    map.addPopup(popup);
-}
-function onFeatureUnselect(evt) {
-    feature = evt.feature;
-    if (feature.popup) {
-        popup.feature = null;
-        map.removePopup(feature.popup);
-        feature.popup.destroy();
-        feature.popup = null;
-    }
-}
+        function onPopupClose(evt) {
+            // 'this' is the popup.
+            selector.unselect(this.feature);
+        }
+
+        function returnText(feat) {
+            if (!feat.cluster) {
+                return '<h2>' + feat.attributes.title + '</h2>' + feature.attributes.description;
+            } else {
+                title = feat.cluster.length + " Images";
+                text = '<div width="200px">';
+                for (var count = 0; count < feat.cluster.length; count++) {
+                    text = text + '<h3>' + feature.cluster[count].attributes.title + '</h3>' + feature.cluster[count].attributes.description;
+                }
+                text = text + '</div>';
+                return text;
+            }
+        }
+
+        function onFeatureSelect(evt) {
+            feature = evt.feature;
+            popup = new OpenLayers.Popup.FramedCloud("featurePopup",
+                feature.geometry.getBounds().getCenterLonLat(),
+                new OpenLayers.Size(150, 100),
+                returnText(feature),
+                null, true, onPopupClose);
+            feature.popup = popup;
+            popup.feature = feature;
+            popup.autosize = false;
+            map.addPopup(popup);
+        }
+
+        function onFeatureUnselect(evt) {
+            feature = evt.feature;
+            if (feature.popup) {
+                popup.feature = null;
+                map.removePopup(feature.popup);
+                feature.popup.destroy();
+                feature.popup = null;
+            }
+        }
 
 
 
 
-		function init() {
-			map = new OpenLayers.Map ("map", {
-				controls:[
-					new OpenLayers.Control.Navigation(),
-					new OpenLayers.Control.PanZoomBar(),
-					new OpenLayers.Control.Attribution()],
-				maxExtent: new OpenLayers.Bounds(-20037508.34,-20037508.34,20037508.34,20037508.34),
-				maxResolution: 156543.0399,
-				numZoomLevels: 19,
-				units: 'm',
-				projection: new OpenLayers.Projection("EPSG:900913"),
-				displayProjection: new OpenLayers.Projection("EPSG:4326")
-			} );
-			routeGpx = new OpenLayers.Layer.Vector(
-    				"{{ trackname }}",
-				{
-				      protocol: new OpenLayers.Protocol.HTTP({
-				      url: "{{ fgpx }}",
-				      format: new OpenLayers.Format.GPX()
-			      }),
-			      strategies: [new OpenLayers.Strategy.Fixed()],
-			      displayInLayerSwitcher: false,
-			      style: {strokeColor: "red", strokeWidth: 5, strokeOpacity: 0.5},
-			      projection: new OpenLayers.Projection("EPSG:4326")
-			    }
-			  );
-			  routeGpx.setVisibility(true);
-			  map.addLayer(routeGpx);
-			  layerCycleMap = new OpenLayers.Layer.OSM.CycleMap("CycleMap");
+        function init() {
+            map = new OpenLayers.Map("map", {
+                controls: [
+                    new OpenLayers.Control.Navigation(),
+                    new OpenLayers.Control.PanZoomBar(),
+                    new OpenLayers.Control.Attribution()
+                ],
+                maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34, 20037508.34),
+                maxResolution: 156543.0399,
+                numZoomLevels: 19,
+                units: 'm',
+                projection: new OpenLayers.Projection("EPSG:900913"),
+                displayProjection: new OpenLayers.Projection("EPSG:4326")
+            });
+            routeGpx = new OpenLayers.Layer.Vector(
+                "{{ trackname }}", {
+                    protocol: new OpenLayers.Protocol.HTTP({
+                        url: "{{ fgpx }}",
+                        format: new OpenLayers.Format.GPX()
+                    }),
+                    strategies: [new OpenLayers.Strategy.Fixed()],
+                    displayInLayerSwitcher: false,
+                    style: {
+                        strokeColor: "red",
+                        strokeWidth: 5,
+                        strokeOpacity: 0.5
+                    },
+                    projection: new OpenLayers.Projection("EPSG:4326")
+                }
+            );
+            routeGpx.setVisibility(true);
+            map.addLayer(routeGpx);
+            layerCycleMap = new OpenLayers.Layer.OSM.CycleMap("CycleMap");
 
-			  {% if photofile %}
-			  	var style = new OpenLayers.Style({
-                    pointRadius: "${radius}",
-                    fillColor: "#ffcc66",
-                    fillOpacity: 0.8,
-                    strokeColor: "#cc6633",
-                    strokeWidth: "${width}",
-                    strokeOpacity: 0.8
-                }, {
-                    context: {
-                        width: function(feature) {
-                            return (feature.cluster) ? 2 : 1;
-                        },
-                        radius: function(feature) {
-                            var pix = 2;
-                            if(feature.cluster) {
-                                pix = Math.min(feature.attributes.count, 7) + 2;
-                            }
-                            return pix;
+            { %
+                if photofile %
+            }
+            var style = new OpenLayers.Style({
+                pointRadius: "${radius}",
+                fillColor: "#ffcc66",
+                fillOpacity: 0.8,
+                strokeColor: "#cc6633",
+                strokeWidth: "${width}",
+                strokeOpacity: 0.8
+            }, {
+                context: {
+                    width: function (feature) {
+                        return (feature.cluster) ? 2 : 1;
+                    },
+                    radius: function (feature) {
+                        var pix = 2;
+                        if (feature.cluster) {
+                            pix = Math.min(feature.attributes.count, 7) + 2;
                         }
+                        return pix;
                     }
-                });
+                }
+            });
 
-			  markers = new OpenLayers.Layer.Vector( "Markers",
-			    {
-				      protocol: new OpenLayers.Protocol.HTTP({
-				      url: "sample.txt",
-				      format: new OpenLayers.Format.Text()
-			      	}),
-				strategies: [ new OpenLayers.Strategy.Fixed(),
-					      new OpenLayers.Strategy.Cluster({ distance: 10, threshold: 2 })
-					     ],
-			      
-			      displayInLayerSwitcher: false,
-			      projection: new OpenLayers.Projection("EPSG:4326"),
-			      eventListeners:{
-				'featureselected': onFeatureSelect,
-					'featureunselected': onFeatureUnselect
+            markers = new OpenLayers.Layer.Vector("Markers", {
+                protocol: new OpenLayers.Protocol.HTTP({
+                    url: "sample.txt",
+                    format: new OpenLayers.Format.Text()
+                }),
+                strategies: [new OpenLayers.Strategy.Fixed(),
+                    new OpenLayers.Strategy.Cluster({
+                        distance: 10,
+                        threshold: 2
+                    })
+                ],
 
-			      },
-			      styleMap: style
-			    }
-			  );
-		
+                displayInLayerSwitcher: false,
+                projection: new OpenLayers.Projection("EPSG:4326"),
+                eventListeners: {
+                    'featureselected': onFeatureSelect,
+                    'featureunselected': onFeatureUnselect
 
-			selector = new OpenLayers.Control.SelectFeature(markers,{
-				    onSelect: onFeatureSelect,
-				    onUnselect: onFeatureUnselect,
-				    clickout: true
-				    
-			});
-			map.addControl(selector);
+                },
+                styleMap: style
+            });
 
-			selector.activate();			
-			{% endif %}
-			  map.addLayer(layerCycleMap);
-			  {% if photofile %}
-			  map.addLayer(markers);
-			  {% endif %}
-			  routeGpx.events.register("featuresadded", routeGpx, setNewMapCenter);
-		
-		}
-	</script>
-	<style>
 
-	</style>	
+            selector = new OpenLayers.Control.SelectFeature(markers, {
+                onSelect: onFeatureSelect,
+                onUnselect: onFeatureUnselect,
+                clickout: true
 
- 
+            });
+            map.addControl(selector);
+
+            selector.activate(); { % endif %
+            }
+            map.addLayer(layerCycleMap); { %
+                if photofile %
+            }
+            map.addLayer(markers); { % endif %
+            }
+            routeGpx.events.register("featuresadded", routeGpx, setNewMapCenter);
+
+        }
+    </script>
+    <style>
+    </style>
+
+
 </head>
+
 <body onload="init();">
-	<div id="content">
-	<div class="pure-g">
-        <div class="pure-u-1-2">
-	<div id="heading">
-	<img src="compass.png" />
-	<h1>{{ trackname }}</h1> 
-        <h5>{{ tipo }} - {{ data }}</h5>	
-	</div>
+    <div id="content">
+        <div class="pure-g">
+            <div class="pure-u-1-2">
+                <div id="heading">
+                    <img src="compass.png" />
+                    <h1>{{ trackname }}</h1> 
+                    <h5>{{ tipo }} - {{ data }}</h5>	
+                </div>
 
-	    <h3>Mappa</h3>
-            <div id="map"></div>
+                <h3>Mappa</h3>
+                <div id="map"></div>
+            </div>
+
+            <div class="pure-u-1-2">
+                <div>
+                    <h3>Profilo altimetrico:</h3>
+                    <img width="100%" src="profilo.png" />
+                    <h3>Informazioni</h3>
+                    <table class="pure-table">
+                        <thead>
+                            <tr>
+                                <th>Distanza</th>
+                                <th>Quota Minima</th>
+                                <th>Quota Massima</th>
+                            </tr>
+                        </thead>
+                        <tr>
+                            <td>{{ distanza }}</td>
+                            <td>{{ qminima }}</td>
+                            <td>{{ qmassima }}</td>
+                        </tr>
+                        <thead>
+                            <th>Dislivello (qmax - qmin)</th>
+                            <th>Dislivello Positivo</th>
+                            <th>Dislivello negativo</th>
+                        </thead>
+                        <tr>
+                            <td>{{ dislivello }}</td>
+                            <td>{{ uphill }}</td>
+                            <td>{{ downhill }}</td>
+                        </tr>
+
+                        <thead>
+                            <th>Tempo Totale</th>
+                            <th>Tempo effettivo</th>
+                            <th>Tempo sosta</th>
+                        </thead>
+                        <tr>
+                            <td>{{ totale }}</td>
+                            <td>{{ inmoto }}</td>
+                            <td>{{ insosta }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
         </div>
-
-	<div class="pure-u-1-2">
-		<div>
-		<h3>Profilo altimetrico:</h3>
-		<img width="100%" src="profilo.png" />
-		<h3>Informazioni</h3>
-		<table class="pure-table">
-		    <thead>
-		        <tr>
-			    <th>Distanza</th>
-		            <th>Quota Minima</th>
-			    <th>Quota Massima</th>
-		        </tr>
-		    </thead>
-		    <tr>
-			<td>{{ distanza }}</td>
-			<td>{{ qminima }} </td>
-			<td>{{ qmassima }} </td>
-		    </tr>
-		    <thead>	
-		            <th>Dislivello (qmax - qmin)</th>
-		            <th>Dislivello Positivo</th>
-		            <th>Dislivello negativo</th>
-		    </thead>
-		    <tr>
-			<td>{{ dislivello }}</td>
-			<td>{{ uphill }}</td>
-			<td>{{ downhill }}</td>
-		    </tr>
-
-                    <thead>	
-		            <th>Tempo Totale</th>
-		            <th>Tempo effettivo</th>
-		            <th>Tempo sosta</th>
-		    </thead>
-		    <tr>
-			<td>{{ totale }}</td>
-			<td>{{ inmoto }}</td>
-			<td>{{ insosta }}</td>
-		    </tr>
-		</table>
-		</div>
-	</div>
-	</div>
-	</div>
+    </div>
 </body>
+
 </html>
+

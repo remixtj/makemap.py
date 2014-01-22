@@ -12,27 +12,27 @@ from os.path import isfile, join
 
 
 def exif_time(pto,path,offset):
-	print pto
-	DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
-	f = open(path+pto, 'rb')
-	tml = False
-	try:
-		tags = exifread.process_file(f,details=False)
-		for dt_tag in DT_TAGS:
-			try:
-				dt_value = "%s" % tags[dt_tag]
-				break
-			except:
-				continue
-		if dt_value:
-			tpl = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
-			# Offset
-			tpl = tpl - datetime.timedelta(hours=offset)
+    print pto
+    DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
+    f = open(path+pto, 'rb')
+    tml = False
+    try:
+        tags = exifread.process_file(f,details=False)
+        for dt_tag in DT_TAGS:
+            try:
+                dt_value = "%s" % tags[dt_tag]
+                break
+            except:
+                continue
+        if dt_value:
+            tpl = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
+            # Offset
+            tpl = tpl - datetime.timedelta(hours=offset)
 
-	finally:
-		f.close()
+    finally:
+        f.close()
 
-	return tpl
+    return tpl
 
 
 parser = argparse.ArgumentParser(description='Takes a directory of images and a gpx as input and creates a file containing coordinates for each photo. The file can be then used to show photos on ')
@@ -57,26 +57,25 @@ timepoints = []
 for track in gpx.tracks:
     for segment in track.segments:
         for point in segment.points:
-		timepoints.append([point.time,point.latitude, point.longitude])
+            timepoints.append([point.time,point.latitude, point.longitude])
 
 
 if (os.path.isdir(args.dir)):
-	mypath = args.dir
+    mypath = args.dir
 else:
-	print "Invalid photo directory"
-	sys.exit(-1)
+    print "Invalid photo directory"
+    sys.exit(-1)
 
 onlyfiles = [ f for f in listdir(mypath) if isfile(join(mypath,f)) ]
 
 output = [['lat','lon','title','description'],]
 
 for f in onlyfiles:
-	ptime = exif_time(f,mypath,args.offset)
-	idx = timepoints.index(min(timepoints,key=lambda x:abs(x[0]-ptime)))
-	output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<img src="photos/{}" />'.format(f)])
+    ptime = exif_time(f,mypath,args.offset)
+    idx = timepoints.index(min(timepoints,key=lambda x:abs(x[0]-ptime)))
+    output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<img src="photos/{}" />'.format(f)])
 
 
 
 with open(args.name, 'w') as file:
-	file.writelines('\t'.join(i) + '\n' for i in output)
-
+    file.writelines('\t'.join(i) + '\n' for i in output)
