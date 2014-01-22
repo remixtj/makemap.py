@@ -63,7 +63,10 @@ def webserver(directory,server_class=BaseHTTPServer.HTTPServer,
     server_address = ('localhost', PORT)
     httpd = server_class(server_address, handler_class)
     count = 0
-    while count < 6:
+    nfiles = 0
+    for d,p,f in os.walk('.'):
+	    nfiles += len(f)
+    while count < nfiles+1:
         count += 1
         httpd.handle_request()
 
@@ -86,6 +89,8 @@ parser.add_argument('-n','--name',type=str,help="Name of the output directory")
 parser.add_argument('-d', '--desc', nargs = '+', help = 'Description of Track',required=True)
 parser.add_argument('--show',help="Shows in local browser",action="store_true")
 parser.add_argument('--ftp',help="ftp url where to publish in the form ftp://user:password@domain:/path (use ftps for FTP_TLS)",type=str)
+parser.add_argument('-p','--photofile',help="path of the file output of the syncphoto.py script",type=str)
+parser.add_argument('-i','--imgdir',help="path of directory containing the photos referenced by the file passed with paramenter -p/--photofile",type=str,default='')
 args = parser.parse_args()
 
 
@@ -159,10 +164,12 @@ if not os.path.exists(dirn):
     copyfile(os.path.dirname(TEMPLATE)+"/compass.png",dirn+"/compass.png")
     copyfile(os.path.dirname(TEMPLATE)+"/my.css",dirn+"/my.css")
     copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
+    if args.photofile:
+	    copyfile(args.photofile,dirn+"/"+args.photofile)
     open(dirn+"/data.ini","w").write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4]," ".join(args.desc)))
     plt.savefig(dirn+"/profilo.png",transparent=True)
     with open(dirn+"/index.html","w") as indexf:
-    	indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo))
+    	indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo,photofile=args.photofile))
     
     if to_ftp:
         print("Uploading to ftp:")
