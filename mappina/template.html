@@ -13,6 +13,17 @@
 		 Using this hosted file will make sure we are kept up
 		 to date with any necessary changes -->
     <script src="http://www.openstreetmap.org/openlayers/OpenStreetMap.js"></script>
+    
+    {% if photofile %}
+    <script src="jquery.js"></script>
+    <script src="venobox.min.js"></script>
+    <link href="venobox.css" rel="stylesheet" />
+    <script type="text/javascript">
+        $(document).ready(function(){
+            $('.venobox').venobox(); 
+        });
+    </script> 
+    {% endif %}
 
     <script type="text/javascript">
         // Start position for the map (hardcoded here for simplicity,
@@ -65,6 +76,9 @@
             popup.feature = feature;
             popup.autosize = false;
             map.addPopup(popup);
+            {% if photofile %}
+            $('.venobox').venobox(); 
+            {% endif %}
         }
 
         function onFeatureUnselect(evt) {
@@ -114,9 +128,7 @@
             map.addLayer(routeGpx);
             layerCycleMap = new OpenLayers.Layer.OSM.CycleMap("CycleMap");
 
-            { %
-                if photofile %
-            }
+            {% if photofile %}
             var style = new OpenLayers.Style({
                 pointRadius: "${radius}",
                 fillColor: "#ffcc66",
@@ -141,7 +153,7 @@
 
             markers = new OpenLayers.Layer.Vector("Markers", {
                 protocol: new OpenLayers.Protocol.HTTP({
-                    url: "sample.txt",
+                    url: "{{ photofile }}",
                     format: new OpenLayers.Format.Text()
                 }),
                 strategies: [new OpenLayers.Strategy.Fixed(),
@@ -170,13 +182,18 @@
             });
             map.addControl(selector);
 
-            selector.activate(); { % endif %
-            }
-            map.addLayer(layerCycleMap); { %
-                if photofile %
-            }
-            map.addLayer(markers); { % endif %
-            }
+            selector.activate(); 
+
+            {% endif %}
+
+            map.addLayer(layerCycleMap); 
+
+            {% if photofile %}
+
+            map.addLayer(markers); 
+
+            {% endif %}
+
             routeGpx.events.register("featuresadded", routeGpx, setNewMapCenter);
 
         }

@@ -4,6 +4,7 @@ import gpxpy
 import gpxpy.gpx
 import argparse
 import os
+import sys
 
 from PIL import Image
 from os import listdir
@@ -12,7 +13,7 @@ from os.path import isfile, join
 
 
 def exif_time(pto,path,offset):
-    print pto
+    sys.stdout.write('{} '.format(pto))
     DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
     f = open(path+pto, 'rb')
     tml = False
@@ -26,6 +27,7 @@ def exif_time(pto,path,offset):
                 continue
         if dt_value:
             tpl = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
+            print(' {}'.format(tpl))
             # Offset
             tpl = tpl - datetime.timedelta(hours=offset)
 
@@ -73,7 +75,8 @@ output = [['lat','lon','title','description'],]
 for f in onlyfiles:
     ptime = exif_time(f,mypath,args.offset)
     idx = timepoints.index(min(timepoints,key=lambda x:abs(x[0]-ptime)))
-    output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<img src="photos/{}" />'.format(f)])
+    #print(str(timepoints[idx][0]))
+    output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<a class="venobox" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
 
 
 

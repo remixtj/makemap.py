@@ -26,32 +26,29 @@ page = env.get_template(os.path.basename(TEMPLATE))
 server_stop = False
 do_later = False
 
-def put_to_ftp(conn,name,remotedir,fgpx):
+def put_to_ftp(conn,name,remotedir):
     conn.cwd(remotedir)
     d = os.path.dirname(name) if os.path.dirname(name) != '' else (name.split('/')[-2] if len(name.split('/'))>1 else name)
     conn.mkd(d)
-    conn.cwd(remotedir+'/'+d)
-    sys.stdout.write('index.html ....')
-    conn.storbinary('STOR index.html',open(name+'/index.html','rb'))
-    print(' OK')
-    sys.stdout.write('my.css ....')
-    conn.storbinary('STOR my.css',open(name+'/my.css','rb'))
-    print(' OK')
-    sys.stdout.write('pure-min.css ....')
-    conn.storbinary('STOR pure-min.css',open(name+'/pure-min.css','rb'))
-    print(' OK')
-    sys.stdout.write('data.ini ....')
-    conn.storbinary('STOR data.ini',open(name+'/data.ini','rb'))
-    print(' OK')
-    sys.stdout.write('compass.png ....')
-    conn.storbinary('STOR compass.png',open(name+'/compass.png','rb'))
-    print(' OK')
-    sys.stdout.write('profilo.png ....')
-    conn.storbinary('STOR profilo.png',open(name+'/profilo.png','rb'))
-    print(' OK')
-    sys.stdout.write(os.path.basename(fgpx)+' ....')
-    conn.storbinary('STOR '+os.path.basename(fgpx),open(name+'/'+os.path.basename(fgpx),'rb'))
-    print(' OK')
+    conn.cwd(remotedir)
+    for dp, dn, fn in os.walk(name):
+        sys.stdout.write('CWD {} ....'.format(dp))
+        try:
+            conn.cwd(dp)
+        except:
+            conn.mkd(dp.split('/')[-1])
+            conn.cwd(dp.split('/')[-1])
+
+        print(' OK')
+        for f in fn:
+            sys.stdout.write('{} ....'.format(f))
+            conn.storbinary('STOR {}'.format(f),open(dp+'/'+f,'rb'))
+            print(' OK')
+        for dr in dn:
+            sys.stdout.write('{} ....'.format(dr))
+            conn.mkd(d)
+            print(' OK') 
+    
     print ('Upload complete')
     conn.quit()
     conn.close()
@@ -90,7 +87,7 @@ parser.add_argument('-d', '--desc', nargs = '+', help = 'Description of Track',r
 parser.add_argument('--show',help="Shows in local browser",action="store_true")
 parser.add_argument('--ftp',help="ftp url where to publish in the form ftp://user:password@domain:/path (use ftps for FTP_TLS)",type=str)
 parser.add_argument('-p','--photofile',help="path of the file output of the syncphoto.py script",type=str)
-parser.add_argument('-i','--imgdir',help="path of directory containing the photos referenced by the file passed with paramenter -p/--photofile",type=str,default='')
+parser.add_argument('-i','--imgdir',help="path of directory containing the photos referenced by the file passed with paramenter -p/--photofile",type=str)
 args = parser.parse_args()
 
 
@@ -165,7 +162,18 @@ if not os.path.exists(dirn):
     copyfile(os.path.dirname(TEMPLATE)+"/my.css",dirn+"/my.css")
     copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
     if args.photofile:
+        copyfile(os.path.dirname(TEMPLATE)+"/venobox.css",dirn+"/venobox.css")
+        copyfile(os.path.dirname(TEMPLATE)+"/venobox.min.js",dirn+"/venobox.min.js")
+        copyfile(os.path.dirname(TEMPLATE)+"/jquery.js",dirn+"/jquery.js")
+        os.mkdir('{}/photos/'.format(dirn))
         copyfile(args.photofile,dirn+"/"+args.photofile)
+        if not args.imgdir:
+            print("Warning: no imgdir (-i parameter) specified, you should copy by hand photos listed in {} to {}/photos/".format(args.photofile,args.name))
+        else:
+            for dp, df, fn in os.walk(args.imgdir):
+                for f in fn:
+                    copyfile('{}/{}'.format(dp,f),'{}/photos/{}'.format(dirn,f))
+            
     open(dirn+"/data.ini","w").write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4]," ".join(args.desc)))
     plt.savefig(dirn+"/profilo.png",transparent=True)
     with open(dirn+"/index.html","w") as indexf:
@@ -183,7 +191,7 @@ if not os.path.exists(dirn):
         f.login(q.username,q.password)
         if q.scheme == 'ftps':
             f.prot_p()
-        put_to_ftp(f,dirn,q.path,args.gpxfile)
+        put_to_ftp(f,dirn,q.path)
     if args.show:
         Thread(target=webserver,args=(dirn,)).start()
         browser()
