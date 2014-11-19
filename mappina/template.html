@@ -5,14 +5,13 @@
     <title>{{ trackname }}</title>
     <link href="pure-min.css" rel="stylesheet" />
     <link href="my.css" rel="stylesheet" />
-    <!-- bring in the OpenLayers javascript library
-		 (here we bring it from the remote site, but you could
-		 easily serve up this javascript yourself) -->
-    <script src="http://www.openlayers.org/api/OpenLayers.js"></script>
-    <!-- bring in the OpenStreetMap OpenLayers layers.
-		 Using this hosted file will make sure we are kept up
-		 to date with any necessary changes -->
-    <script src="http://www.openstreetmap.org/openlayers/OpenStreetMap.js"></script>
+    <link rel="stylesheet" type="text/css" href="leaflet/leaflet.css" />
+    <script type="text/javascript" src="leaflet/leaflet.js"></script>
+    <script type="text/javascript" src="leaflet/leaflet-omnivore.min.js"></script> 
+    <script src='leaflet/leaflet.markercluster.js'></script>
+    <link href='leaflet/MarkerCluster.css' rel='stylesheet'>
+    <link href='leaflet/MarkerCluster.Default.css' rel='stylesheet'>
+
     
     {% if photofile %}
     <script src="jquery.js"></script>
@@ -26,185 +25,58 @@
     {% endif %}
 
     <script type="text/javascript">
-        // Start position for the map (hardcoded here for simplicity,
-         // but maybe you want to get this from the URL params)
-        var map; //complex object of type OpenLayers.Mapvar routeGpx, map;
+var map;
+var ajaxRequest;
+var plotlist;
+var plotlayers=[];
 
-        function setNewMapCenter() {
-            if (routeGpx.features.length > 0) {
-                layerBounds = routeGpx.features[0].geometry.getBounds();
-                for (var i = 0; i < routeGpx.features.length; i++) {
-                    thisBounds = routeGpx.features[i].geometry.getBounds();
-                    layerBounds.top = Math.max(thisBounds.top, layerBounds.top);
-                    layerBounds.bottom = Math.min(thisBounds.bottom, layerBounds.bottom);
-                    layerBounds.left = Math.min(thisBounds.left, layerBounds.left);
-                    layerBounds.right = Math.max(thisBounds.right, layerBounds.right);
-                }
-                mapCenter = layerBounds.getCenterLonLat();
-                mapZoom = map.getZoomForExtent(layerBounds, false);
-                map.setCenter(mapCenter, mapZoom);
-            }
-        }
+function initmap() {
+	// set up the map
+	map = new L.Map('map');
 
-        function onPopupClose(evt) {
-            // 'this' is the popup.
-            selector.unselect(this.feature);
-        }
+	// create the tile layer with correct attribution
+	//var osmUrl='Tiles/{z}/{x}/{y}.png';
+        var osmUrl = 'http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png'
+	var osmAttrib='&copy; OpenCycleMap - Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+	var osm = new L.TileLayer(osmUrl, {minZoom: 12, maxZoom: 16, attribution: osmAttrib});		
 
-        function returnText(feat) {
-            if (!feat.cluster) {
-                return '<h2>' + feat.attributes.title + '</h2>' + feature.attributes.description;
-            } else {
-                title = feat.cluster.length + " Images";
-                text = '<div width="200px">';
-                for (var count = 0; count < feat.cluster.length; count++) {
-                    text = text + '<h3>' + feature.cluster[count].attributes.title + '</h3>' + feature.cluster[count].attributes.description;
-                }
-                text = text + '</div>';
-                return text;
-            }
-        }
-
-        function onFeatureSelect(evt) {
-            feature = evt.feature;
-            popup = new OpenLayers.Popup.FramedCloud("featurePopup",
-                feature.geometry.getBounds().getCenterLonLat(),
-                new OpenLayers.Size(150, 100),
-                returnText(feature),
-                null, true, onPopupClose);
-            feature.popup = popup;
-            popup.feature = feature;
-            popup.autosize = false;
-            map.addPopup(popup);
-            {% if photofile %}
-            $('.venobox').venobox(); 
-            {% endif %}
-        }
-
-        function onFeatureUnselect(evt) {
-            feature = evt.feature;
-            if (feature.popup) {
-                popup.feature = null;
-                map.removePopup(feature.popup);
-                feature.popup.destroy();
-                feature.popup = null;
-            }
-        }
-
-
-
-
-        function init() {
-            map = new OpenLayers.Map("map", {
-                controls: [
-                    new OpenLayers.Control.Navigation(),
-                    new OpenLayers.Control.PanZoomBar(),
-                    new OpenLayers.Control.Attribution()
-                ],
-                maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34, 20037508.34),
-                maxResolution: 156543.0399,
-                numZoomLevels: 19,
-                units: 'm',
-                projection: new OpenLayers.Projection("EPSG:900913"),
-                displayProjection: new OpenLayers.Projection("EPSG:4326")
+	map.addLayer(osm);
+        {% if photofile %}
+        var points = omnivore.csv('{{ photofile }}',{latfield: 'lat',lonfield: 'lon',delimiter: '\t'})
+            .on('ready', function(layer) {
+            this.eachLayer(function(marker) {
+                marker.bindPopup('<h3>'+marker.toGeoJSON().properties.title+"</h3>"+marker.toGeoJSON().properties.description);
             });
-            routeGpx = new OpenLayers.Layer.Vector(
-                "{{ trackname }}", {
-                    protocol: new OpenLayers.Protocol.HTTP({
-                        url: "{{ fgpx }}",
-                        format: new OpenLayers.Format.GPX()
-                    }),
-                    strategies: [new OpenLayers.Strategy.Fixed()],
-                    displayInLayerSwitcher: false,
-                    style: {
-                        strokeColor: "red",
-                        strokeWidth: 5,
-                        strokeOpacity: 0.5
-                    },
-                    projection: new OpenLayers.Projection("EPSG:4326")
-                }
-            );
-            routeGpx.setVisibility(true);
-            map.addLayer(routeGpx);
-            layerCycleMap = new OpenLayers.Layer.OSM.CycleMap("CycleMap");
-
-            {% if photofile %}
-            var style = new OpenLayers.Style({
-                pointRadius: "${radius}",
-                fillColor: "#ffcc66",
-                fillOpacity: 0.8,
-                strokeColor: "#cc6633",
-                strokeWidth: "${width}",
-                strokeOpacity: 0.8
-            }, {
-                context: {
-                    width: function (feature) {
-                        return (feature.cluster) ? 2 : 1;
-                    },
-                    radius: function (feature) {
-                        var pix = 2;
-                        if (feature.cluster) {
-                            pix = Math.min(feature.attributes.count, 7) + 2;
-                        }
-                        return pix;
-                    }
-                }
-            });
-
-            markers = new OpenLayers.Layer.Vector("Markers", {
-                protocol: new OpenLayers.Protocol.HTTP({
-                    url: "{{ photofile }}",
-                    format: new OpenLayers.Format.Text()
-                }),
-                strategies: [new OpenLayers.Strategy.Fixed(),
-                    new OpenLayers.Strategy.Cluster({
-                        distance: 10,
-                        threshold: 2
-                    })
-                ],
-
-                displayInLayerSwitcher: false,
-                projection: new OpenLayers.Projection("EPSG:4326"),
-                eventListeners: {
-                    'featureselected': onFeatureSelect,
-                    'featureunselected': onFeatureUnselect
-
-                },
-                styleMap: style
-            });
-
-
-            selector = new OpenLayers.Control.SelectFeature(markers, {
-                onSelect: onFeatureSelect,
-                onUnselect: onFeatureUnselect,
-                clickout: true
-
-            });
-            map.addControl(selector);
-
-            selector.activate(); 
-
-            {% endif %}
-
-            map.addLayer(layerCycleMap); 
-
-            {% if photofile %}
-
-            map.addLayer(markers); 
-
-            {% endif %}
-
-            routeGpx.events.register("featuresadded", routeGpx, setNewMapCenter);
-
-        }
-    </script>
+        map.fitBounds(points.getBounds());
+        var markers = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            maxClusterRadius: 50
+        });
+            markers.addLayer(points);
+            map.addLayer(markers);            
+        });
+        {% endif %}
+        var gpxLayer = omnivore.gpx('{{ fgpx }}').on('ready', function() {
+        map.fitBounds(gpxLayer.getBounds());
+    }).addTo(map)
+}
+    </script> 
     <style>
+ html, body {
+            height: 100%;
+    }
+
+    #map {
+        height: 100%;
+        background: #000;
+    }
+
     </style>
 
 
 </head>
 
-<body onload="init();">
+<body onload="initmap();">
     <div id="content">
         <div class="pure-g-r">
             <div class="pure-u-1">

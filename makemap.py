@@ -11,7 +11,7 @@ import SocketServer
 import SimpleHTTPServer
 import BaseHTTPServer
 import time
-from shutil import copyfile
+from shutil import copyfile,copytree
 from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
 from threading import Thread
@@ -161,6 +161,7 @@ if not os.path.exists(dirn):
     copyfile(os.path.dirname(TEMPLATE)+"/compass.png",dirn+"/compass.png")
     copyfile(os.path.dirname(TEMPLATE)+"/my.css",dirn+"/my.css")
     copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
+    copytree(os.path.dirname(TEMPLATE)+"/leaflet/","{}/leaflet/".format(dirn))
     if args.photofile:
         copyfile(os.path.dirname(TEMPLATE)+"/venobox.css",dirn+"/venobox.css")
         copyfile(os.path.dirname(TEMPLATE)+"/venobox.min.js",dirn+"/venobox.min.js")
