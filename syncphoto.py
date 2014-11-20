@@ -24,6 +24,7 @@ def exif_time(pto,path,offset):
                 dt_value = "%s" % tags[dt_tag]
                 break
             except:
+                dt_value = False
                 continue
         if dt_value:
             tpl = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
@@ -76,7 +77,7 @@ for f in onlyfiles:
     ptime = exif_time(f,mypath,args.offset)
     idx = timepoints.index(min(timepoints,key=lambda x:abs(x[0]-ptime)))
     #print(str(timepoints[idx][0]))
-    output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<a class="venobox" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
+    output.append([str(timepoints[idx][1]),str(timepoints[idx][2]),f,'<a data-lightbox="{0}" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
 
 
 

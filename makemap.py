@@ -163,9 +163,9 @@ if not os.path.exists(dirn):
     copyfile(os.path.dirname(TEMPLATE)+"/pure-min.css",dirn+"/pure-min.css")
     copytree(os.path.dirname(TEMPLATE)+"/leaflet/","{}/leaflet/".format(dirn))
     if args.photofile:
-        copyfile(os.path.dirname(TEMPLATE)+"/venobox.css",dirn+"/venobox.css")
-        copyfile(os.path.dirname(TEMPLATE)+"/venobox.min.js",dirn+"/venobox.min.js")
-        copyfile(os.path.dirname(TEMPLATE)+"/jquery.js",dirn+"/jquery.js")
+        copytree(os.path.dirname(TEMPLATE)+"/js/","{}/js/".format(dirn))
+        copytree(os.path.dirname(TEMPLATE)+"/css/","{}/css/".format(dirn))
+        copytree(os.path.dirname(TEMPLATE)+"/img/","{}/img/".format(dirn))
         os.mkdir('{}/photos/'.format(dirn))
         copyfile(args.photofile,dirn+"/"+args.photofile)
         if not args.imgdir:
