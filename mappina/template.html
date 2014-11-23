@@ -33,7 +33,7 @@ function initmap() {
 	//var osmUrl='Tiles/{z}/{x}/{y}.png';
         var osmUrl = 'http://{s}.tile.opencyclemap.org/cycle/{z}/{x}/{y}.png'
 	var osmAttrib='&copy; OpenCycleMap - Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
-	var osm = new L.TileLayer(osmUrl, {minZoom: 12, maxZoom: 16, attribution: osmAttrib});		
+	var osm = new L.TileLayer(osmUrl, {minZoom: {{ minzoom }}, maxZoom: {{ maxzoom }}, attribution: osmAttrib});		
 
 	map.addLayer(osm);
         {% if photofile %}

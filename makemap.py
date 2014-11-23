@@ -11,6 +11,7 @@ import SocketServer
 import SimpleHTTPServer
 import BaseHTTPServer
 import time
+import math
 from shutil import copyfile,copytree
 from urlparse import urlparse
 from ftplib import FTP,FTP_TLS
@@ -79,6 +80,34 @@ def browser():
 def get_tipo():
     return "Escursione"
 
+
+def haversine(lat1,lon1,lat2,lon2):
+    R = 6372797.560856
+    dlat = math.radians(lat2-lat1)
+    dlon = math.radians(lon2-lon1)
+    lonh = math.sin(dlon*0.5)
+    lonh *= lonh
+    lath = math.sin(dlat*0.5)
+    lath *= lath
+    tmp = math.cos(math.radians(lat1))*math.cos(math.radians(lat2))
+    return 2*R*math.asin(math.sqrt(lath+tmp*lonh))
+
+def calcola_minzoom(lat,lon):
+    zoom_to_mpx = [156412, 78206, 39103, 19551, 9776, 4888, 2444, 1222, 610.984, 
+    305.492, 152.746, 76.373, 38.187, 19.093, 9.547, 4.773, 2.387, 1.193, 0.596, 
+    0.298]
+    dw = haversine(min(lat),min(lon),min(lat),max(lon))
+    dh = haversine(min(lat),min(lon),max(lat),max(lon))
+    dw2 = haversine(max(lat),min(lon),max(lat),max(lon))
+    dh2 = haversine(min(lat),max(lon),max(lat),max(lon))
+    haver_width = (dw+dw2)/2
+    haver_height = (dh+dh2)/2
+    wmpx = haver_width/600
+    hmpx = haver_height/600
+    zw = min(x for x in zoom_to_mpx if x > wmpx)
+    zh = min(x for x in zoom_to_mpx if x > hmpx)
+    return zoom_to_mpx.index(max(zw,zh))
+
 parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
 
 parser.add_argument('gpxfile',metavar='GPX',type=str,help="Name of the GPX File")
@@ -134,6 +163,8 @@ downhill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[1],0))
 dislivello = round(qmassima-qminima,1)
 tipo = get_tipo()
 
+minzoom = calcola_minzoom(lat,lon)
+
 start_date, end_date = gpx.get_time_bounds()
 if start_date.date() == end_date.date():
     data = start_date.date()
@@ -178,7 +209,7 @@ if not os.path.exists(dirn):
     open(dirn+"/data.ini","w").write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4]," ".join(args.desc)))
     plt.savefig(dirn+"/profilo.png",transparent=True)
     with open(dirn+"/index.html","w") as indexf:
-        indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo,photofile=args.photofile))
+        indexf.write(page.render(inmoto=in_moto,insosta=in_sosta,totale=totale,qminima=qminima,qmassima=qmassima,distanza=distanza,uphill=uphill,downhill=downhill,dislivello=dislivello,fgpx=os.path.basename(args.gpxfile),trackname=" ".join(args.desc),data=data,tipo=tipo, minzoom=minzoom-1,maxzoom=min(19,minzoom+3),photofile=args.photofile))
 
     if to_ftp:
         print("Uploading to ftp:")
