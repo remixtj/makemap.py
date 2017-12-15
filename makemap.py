@@ -5,6 +5,9 @@ import argparse
 import sys
 import os
 import datetime
+import pytz
+import exifread
+from PIL import Image
 import matplotlib.pyplot as plt
 import webbrowser
 import SocketServer
@@ -15,23 +18,24 @@ import math
 from shutil import copyfile, copytree
 from urlparse import urlparse
 from threading import Thread
-from config import TEMPLATE
+import config
 from jinja2 import Environment, FileSystemLoader
-env = Environment(loader=FileSystemLoader(os.path.dirname(TEMPLATE)))
-page = env.get_template(os.path.basename(TEMPLATE))
+env = Environment(loader=FileSystemLoader(os.path.dirname(config.TEMPLATE)))
+page = env.get_template(os.path.basename(config.TEMPLATE))
 
 
 server_stop = False
 do_later = False
 
 
-def webserver(directory, server_class=BaseHTTPServer.HTTPServer, handler_class=SimpleHTTPServer.SimpleHTTPRequestHandler):
+def show(directory, server_class=BaseHTTPServer.HTTPServer, handler_class=SimpleHTTPServer.SimpleHTTPRequestHandler):
     PORT = 6655
     os.chdir(directory)
     server_address = ('localhost', PORT)
     httpd = server_class(server_address, handler_class)
     count = 0
     nfiles = 0
+    browser()
     for d, p, f in os.walk('.'):
         nfiles += len(f)
     while count < nfiles + 1:
@@ -44,8 +48,6 @@ def browser():
         webbrowser.open('http://localhost:6655')
     except:
         print 'Problem opening web browser. Point your browser to http://localhost:6655'
-
-    sys.exit(0)
 
 
 def get_tipo():
@@ -79,117 +81,159 @@ def calcola_minzoom(lat, lon):
     return zoom_to_mpx.index(max(zw, zh))
 
 
-def syncphoto(tracks, directory, offset=0):
+def exif_time(pto, path):
+    DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
+    f = open(path + pto, 'rb')
+    try:
+        tags = exifread.process_file(f, details=False)
+        for dt_tag in DT_TAGS:
+            try:
+                dt_value = "{}".format(tags[dt_tag])
+                break
+            except:
+                dt_value = False
+                continue
+        if dt_value:
+            print(dt_value)
+            photo_time = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
+            localtz = pytz.timezone('Europe/Rome')
+            local_dt = localtz.localize(photo_time)
+            photo_time = local_dt.astimezone(pytz.utc)
+    finally:
+        f.close()
+
+    return photo_time.replace(tzinfo=None)
+
+
+def syncphoto(tracks, directory):
     timepoints = []
     for track in tracks:
         for segment in track.segments:
             for point in segment.points:
                 timepoints.append([point.time, point.latitude, point.longitude])
-    imgfiles = [f for f in os.listdir(mypath) if os.path.isfile(join(mypath, f))]
+    imgfiles = [f for f in os.listdir(directory) if os.path.isfile(''.join((directory, f)))]
     output = [['lat', 'lon', 'title', 'description'], ]
     for f in imgfiles:
-        ptime = exif_time(f, mypath, offset)
+        ptime = exif_time(f, directory)
         idx = timepoints.index(min(timepoints, key=lambda x: abs(x[0] - ptime)))
         output.append([str(timepoints[idx][1]), str(timepoints[idx][2]), f, '<a data-lightbox="{0}" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
     return ''.join(['\t'.join(i) + '\n' for i in output])
 
 
-parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
-
-parser.add_argument('gpxfile', metavar='GPX', type=str, help="Name of the GPX File")
-parser.add_argument('-n', '--name', type=str, help="Name of the output directory")
-parser.add_argument('-d', '--desc', nargs='+', help='Description of Track', required=True)
-parser.add_argument('--show', help="Shows in local browser", action="store_true")
-parser.add_argument('-p', '--photofile', help="path of the file output of the syncphoto.py script", type=str)
-parser.add_argument('-i', '--imgdir', help="path of directory containing the photos referenced by the file passed with paramenter -p/--photofile", type=str)
-args = parser.parse_args()
+def resize(img_in, img_out, basewidth):
+    img = Image.open(img_in)
+    wpercent = basewidth / img.size[0]
+    hsize = int(img.size[1] * wpercent)
+    print('resizing {} to {} with size ({},{})'.format(img_in, img_out, basewidth, hsize))
+    img_scaled = img.resize((basewidth, hsize), Image.ANTIALIAS)
+    img.save(img_out)
 
 
-try:
-    gpx = gpxpy.parse(open(args.gpxfile))
-except IOError:
-    print "Invalid file name"
-    sys.exit(-1)
-except gpxpy.gpx.GPXXMLSyntaxException:
-    print "Invalid gpx file format"
-    sys.exit(-1)
+def main():
+    parser = argparse.ArgumentParser(description='Starting from a gpx, creates an html file with map, elevation profile and timings')
 
+    parser.add_argument('gpxfile', metavar='GPX', type=str, help="Name of the GPX File")
+    parser.add_argument('-n', '--name', type=str, help="Name of the output directory")
+    parser.add_argument('-d', '--desc', nargs='+', help='Description of Track', required=True)
+    parser.add_argument('--show', help="Shows in local browser", action="store_true")
+    parser.add_argument('-i', '--imgdir', help="path of directory containing photos to be placed on map", type=str)
+    args = parser.parse_args()
 
-lon = []
-lat = []
-elevation = []
-pts = []
+    try:
+        gpx = gpxpy.parse(open(args.gpxfile))
+    except IOError:
+        print "Invalid file name"
+        sys.exit(-1)
+    except gpxpy.gpx.GPXXMLSyntaxException:
+        print "Invalid gpx file format"
+        sys.exit(-1)
 
-for track in gpx.tracks:
-    for segment in track.segments:
-        for point in segment.points:
-            lat.append(point.latitude)
-            lon.append(point.longitude)
-            elevation.append(point.elevation)
-            pts.append(point)
+    lon = []
+    lat = []
+    elevation = []
+    pts = []
 
-moving_time, stopped_time, moving_distance, stopped_distance, max_speed = gpx.get_moving_data()
-in_moto = str(datetime.timedelta(seconds=moving_time))
-in_sosta = str(datetime.timedelta(seconds=stopped_time))
-totale = str(datetime.timedelta(seconds=(moving_time + stopped_time)))
-qminima = min(elevation)
-qmassima = max(elevation)
-distanza = "{0:.2f}".format(gpx.length_3d())
-uphill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[0], 0))
-downhill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[1], 0))
-dislivello = round(qmassima - qminima, 1)
-tipo = get_tipo()
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for point in segment.points:
+                lat.append(point.latitude)
+                lon.append(point.longitude)
+                elevation.append(point.elevation)
+                pts.append(point)
 
-minzoom = calcola_minzoom(lat, lon)
+    moving_time, stopped_time, moving_distance, stopped_distance, max_speed = gpx.get_moving_data()
+    in_moto = str(datetime.timedelta(seconds=moving_time))
+    in_sosta = str(datetime.timedelta(seconds=stopped_time))
+    totale = str(datetime.timedelta(seconds=(moving_time + stopped_time)))
+    qminima = min(elevation)
+    qmassima = max(elevation)
+    distanza = "{0:.2f}".format(gpx.length_3d())
+    uphill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[0], 0))
+    downhill = "{0:.0f}".format(round(gpx.get_uphill_downhill()[1], 0))
+    dislivello = round(qmassima - qminima, 1)
+    tipo = get_tipo()
 
-start_date, end_date = gpx.get_time_bounds()
-if start_date.date() == end_date.date():
-    data = start_date.date()
-else:
-    data = "{} - {}".format(start_date.date(), end_date.date())
+    minzoom = calcola_minzoom(lat, lon)
 
-pdsts = [pts[i].distance_3d(pts[i - 1]) if i != 0 else 0 for i in range(0, len(pts))]
-dsts = [sum(pdsts[0:i]) for i in range(0, len(pdsts))]
-plt.plot(dsts, elevation)
-plt.plot(dsts, [max(elevation) for i in range(0, len(elevation))], label="Max elevation: {}".format(max(elevation)))
-plt.legend()
-x1, x2, y1, y2 = plt.axis()
-plt.axis((x1, x2, y1, y1 + ((y2 - y1) * 1.15)))
-plt.ylabel('Elevation (m)')
-plt.xlabel('Distance (m)')
+    start_date, end_date = gpx.get_time_bounds()
+    if start_date.date() == end_date.date():
+        data = start_date.date()
+    else:
+        data = "{} - {}".format(start_date.date(), end_date.date())
 
-if args.name:
-    dirn = args.name
-else:
-    dirn = os.path.basename(args.gpxfile)[:-4]
+    pdsts = [pts[i].distance_3d(pts[i - 1]) if i != 0 else 0 for i in range(0, len(pts))]
+    dsts = [sum(pdsts[0:i]) for i in range(0, len(pdsts))]
+    plt.plot(dsts, elevation)
+    plt.plot(dsts, [max(elevation) for i in range(0, len(elevation))], label="Max elevation: {}".format(max(elevation)))
+    plt.legend()
+    x1, x2, y1, y2 = plt.axis()
+    plt.axis((x1, x2, y1, y1 + ((y2 - y1) * 1.15)))
+    plt.ylabel('Elevation (m)')
+    plt.xlabel('Distance (m)')
 
-if not os.path.exists(dirn):
-    os.mkdir(dirn)
-    copyfile(args.gpxfile, dirn + "/" + os.path.basename(args.gpxfile))
-    copyfile(os.path.dirname(TEMPLATE) + "/compass.png", dirn + "/compass.png")
-    copyfile(os.path.dirname(TEMPLATE) + "/my.css", dirn + "/my.css")
-    copyfile(os.path.dirname(TEMPLATE) + "/pure-min.css", dirn + "/pure-min.css")
-    copytree(os.path.dirname(TEMPLATE) + "/leaflet/", "{}/leaflet/".format(dirn))
-    if args.imgdir and os.path.isdir(args.imgdir):
-        copytree(os.path.dirname(TEMPLATE) + "/js/", "{}/js/".format(dirn))
-        copytree(os.path.dirname(TEMPLATE) + "/css/", "{}/css/".format(dirn))
-        copytree(os.path.dirname(TEMPLATE) + "/img/", "{}/img/".format(dirn))
-        os.mkdir('{}/photos/'.format(dirn))
-        copyfile(args.photofile, dirn + "/" + args.photofile)
-        with open(dirn + '/photos.txt', 'w') as f:
-            f.write(syncphoto(gpx.tracks, args.imgdir))
-        for dp, df, fn in os.walk(args.imgdir):
-            for f in fn:
-                copyfile('{}/{}'.format(dp, f), '{}/photos/{}'.format(dirn, f))
-    with open(dirn + "/data.ini", "w") as dataini:
-        dataini.write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4], " ".join(args.desc)))
-    plt.savefig(dirn + "/profilo.png", transparent=True)
-    with open(dirn + "/index.html", "w") as indexf:
-        indexf.write(page.render(inmoto=in_moto, insosta=in_sosta, totale=totale, qminima=qminima, qmassima=qmassima, distanza=distanza, uphill=uphill, downhill=downhill, dislivello=dislivello, fgpx=os.path.basename(args.gpxfile), trackname=" ".join(args.desc), data=data, tipo=tipo, minzoom=minzoom - 1, maxzoom=min(19, minzoom + 3), photofile=args.photofile))
+    if args.name:
+        dirn = args.name
+    else:
+        dirn = os.path.basename(args.gpxfile)[:-4]
+
+    if os.path.exists(dirn):
+        print "Error creating {}/: directory exists. Remove or rename it".format(dirn)
+        if not args.show:
+            sys.exit(1)
+    else:
+        os.mkdir(dirn)
+        copyfile(args.gpxfile, dirn + "/" + os.path.basename(args.gpxfile))
+        copyfile(os.path.dirname(config.TEMPLATE) + "/compass.png", dirn + "/compass.png")
+        copyfile(os.path.dirname(config.TEMPLATE) + "/my.css", dirn + "/my.css")
+        copyfile(os.path.dirname(config.TEMPLATE) + "/pure-min.css", dirn + "/pure-min.css")
+        copytree(os.path.dirname(config.TEMPLATE) + "/leaflet/", "{}/leaflet/".format(dirn))
+        if args.imgdir and os.path.isdir(args.imgdir):
+            copytree(os.path.dirname(config.TEMPLATE) + "/js/", "{}/js/".format(dirn))
+            copytree(os.path.dirname(config.TEMPLATE) + "/css/", "{}/css/".format(dirn))
+            copytree(os.path.dirname(config.TEMPLATE) + "/img/", "{}/img/".format(dirn))
+            os.mkdir('{}/photos/'.format(dirn))
+            with open(dirn + '/photos.txt', 'w') as f:
+                f.write(syncphoto(gpx.tracks, args.imgdir))
+            for dp, df, fn in os.walk(args.imgdir):
+                for f in fn:
+                    resize('{}/{}'.format(dp, f), '{}/photos/{}'.format(dirn, f), 1024)
+        with open(dirn + "/data.ini", "w") as dataini:
+            dataini.write("title={} {}\n".format(os.path.basename(args.gpxfile)[:-4], " ".join(args.desc)))
+        plt.savefig(dirn + "/profilo.png", transparent=True)
+        with open(dirn + "/index.html", "w") as indexf:
+            indexf.write(page.render(inmoto=in_moto, insosta=in_sosta, totale=totale, qminima=qminima, qmassima=qmassima, distanza=distanza, uphill=uphill, downhill=downhill, dislivello=dislivello, fgpx=os.path.basename(args.gpxfile), trackname=" ".join(args.desc), data=data, tipo=tipo, minzoom=minzoom - 1, maxzoom=min(19, minzoom + 3), photofile='photos.txt'))
 
     if args.show:
-        Thread(target=webserver, args=(dirn, )).start()
-        browser()
+        t = Thread(target=show, args=(dirn, ))
+        t.daemon = True
+        t.start()
+        try:
+            time.sleep(100)
+        except KeyboardInterrupt:
+            print('Closing webserver...')
+        else:
+            print('Automatically closing webserver after 100secs of availability...')
+        sys.exit(0)
 
-else:
-    print "Error creating {}/: directory exists".format(dirn)
+if __name__ == '__main__':
+    main()
