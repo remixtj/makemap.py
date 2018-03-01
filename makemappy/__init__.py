@@ -18,10 +18,11 @@ import math
 from shutil import copyfile, copytree
 from urlparse import urlparse
 from threading import Thread
-import config
 from jinja2 import Environment, FileSystemLoader
-env = Environment(loader=FileSystemLoader(os.path.dirname(config.TEMPLATE)))
-page = env.get_template(os.path.basename(config.TEMPLATE))
+
+TEMPLATE = os.path.join(os.path.abspath(os.path.dirname(__file__)),'mappina/template.html')
+env = Environment(loader=FileSystemLoader(os.path.dirname(TEMPLATE)))
+page = env.get_template(os.path.basename(TEMPLATE))
 
 
 server_stop = False
@@ -45,9 +46,9 @@ def show(directory, server_class=BaseHTTPServer.HTTPServer, handler_class=Simple
 
 def browser():
     try:
-        webbrowser.open('http://localhost:6655')
+        webbrowser.open('http://127.0.0.1.nip.io:6655')
     except:
-        print 'Problem opening web browser. Point your browser to http://localhost:6655'
+        print 'Problem opening web browser. Point your browser to http://127.0.0.1.nip.io:6655'
 
 
 def get_tipo():
@@ -83,8 +84,8 @@ def calcola_minzoom(lat, lon):
 
 def exif_time(pto, path):
     DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
-    f = open(path + pto, 'rb')
-    try:
+    photo_time = datetime.datetime.now()
+    with open(os.path.join(path, pto), 'rb') as f: 
         tags = exifread.process_file(f, details=False)
         for dt_tag in DT_TAGS:
             try:
@@ -94,14 +95,11 @@ def exif_time(pto, path):
                 dt_value = False
                 continue
         if dt_value:
-            print(dt_value)
             photo_time = datetime.datetime.strptime(dt_value, '%Y:%m:%d %H:%M:%S')
             localtz = pytz.timezone('Europe/Rome')
             local_dt = localtz.localize(photo_time)
             photo_time = local_dt.astimezone(pytz.utc)
-    finally:
-        f.close()
-
+    print photo_time
     return photo_time.replace(tzinfo=None)
 
 
@@ -111,10 +109,12 @@ def syncphoto(tracks, directory):
         for segment in track.segments:
             for point in segment.points:
                 timepoints.append([point.time, point.latitude, point.longitude])
-    imgfiles = [f for f in os.listdir(directory) if os.path.isfile(''.join((directory, f)))]
+    imgfiles = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
     output = [['lat', 'lon', 'title', 'description'], ]
     for f in imgfiles:
+        print(f)
         ptime = exif_time(f, directory)
+        print(ptime)
         idx = timepoints.index(min(timepoints, key=lambda x: abs(x[0] - ptime)))
         output.append([str(timepoints[idx][1]), str(timepoints[idx][2]), f, '<a data-lightbox="{0}" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
     return ''.join(['\t'.join(i) + '\n' for i in output])
@@ -142,7 +142,7 @@ def main():
     try:
         gpx = gpxpy.parse(open(args.gpxfile))
     except IOError:
-        print "Invalid file name"
+        print("IO Error: invalid file name {}".format(args.gpxfile))
         sys.exit(-1)
     except gpxpy.gpx.GPXXMLSyntaxException:
         print "Invalid gpx file format"
@@ -203,14 +203,14 @@ def main():
     else:
         os.mkdir(dirn)
         copyfile(args.gpxfile, dirn + "/" + os.path.basename(args.gpxfile))
-        copyfile(os.path.dirname(config.TEMPLATE) + "/compass.png", dirn + "/compass.png")
-        copyfile(os.path.dirname(config.TEMPLATE) + "/my.css", dirn + "/my.css")
-        copyfile(os.path.dirname(config.TEMPLATE) + "/pure-min.css", dirn + "/pure-min.css")
-        copytree(os.path.dirname(config.TEMPLATE) + "/leaflet/", "{}/leaflet/".format(dirn))
+        copyfile(os.path.dirname(TEMPLATE) + "/compass.png", dirn + "/compass.png")
+        copyfile(os.path.dirname(TEMPLATE) + "/my.css", dirn + "/my.css")
+        copyfile(os.path.dirname(TEMPLATE) + "/pure-min.css", dirn + "/pure-min.css")
+        copytree(os.path.dirname(TEMPLATE) + "/leaflet/", "{}/leaflet/".format(dirn))
         if args.imgdir and os.path.isdir(args.imgdir):
-            copytree(os.path.dirname(config.TEMPLATE) + "/js/", "{}/js/".format(dirn))
-            copytree(os.path.dirname(config.TEMPLATE) + "/css/", "{}/css/".format(dirn))
-            copytree(os.path.dirname(config.TEMPLATE) + "/img/", "{}/img/".format(dirn))
+            copytree(os.path.dirname(TEMPLATE) + "/js/", "{}/js/".format(dirn))
+            copytree(os.path.dirname(TEMPLATE) + "/css/", "{}/css/".format(dirn))
+            copytree(os.path.dirname(TEMPLATE) + "/img/", "{}/img/".format(dirn))
             os.mkdir('{}/photos/'.format(dirn))
             with open(dirn + '/photos.txt', 'w') as f:
                 f.write(syncphoto(gpx.tracks, args.imgdir))

@@ -2,3 +2,9 @@ launcher.sh
 makemap
 config.pyc
 20*
+build
+dist
+makemap.py.egg-info
+photos.txt
+wrk
+
