@@ -10,17 +10,15 @@ import exifread
 from PIL import Image
 import matplotlib.pyplot as plt
 import webbrowser
-import SocketServer
 import SimpleHTTPServer
 import BaseHTTPServer
 import time
 import math
 from shutil import copyfile, copytree
-from urlparse import urlparse
 from threading import Thread
 from jinja2 import Environment, FileSystemLoader
 
-TEMPLATE = os.path.join(os.path.abspath(os.path.dirname(__file__)),'mappina/template.html')
+TEMPLATE = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'mappina/template.html')
 env = Environment(loader=FileSystemLoader(os.path.dirname(TEMPLATE)))
 page = env.get_template(os.path.basename(TEMPLATE))
 
@@ -47,8 +45,8 @@ def show(directory, server_class=BaseHTTPServer.HTTPServer, handler_class=Simple
 def browser():
     try:
         webbrowser.open('http://127.0.0.1.nip.io:6655')
-    except:
-        print 'Problem opening web browser. Point your browser to http://127.0.0.1.nip.io:6655'
+    except Exception:
+        print('Problem opening web browser. Point your browser to http://127.0.0.1.nip.io:6655')
 
 
 def get_tipo():
@@ -85,13 +83,13 @@ def calcola_minzoom(lat, lon):
 def exif_time(pto, path):
     DT_TAGS = ["Image DateTime", "EXIF DateTimeOriginal", "DateTime"]
     photo_time = datetime.datetime.now()
-    with open(os.path.join(path, pto), 'rb') as f: 
+    with open(os.path.join(path, pto), 'rb') as f:
         tags = exifread.process_file(f, details=False)
         for dt_tag in DT_TAGS:
             try:
                 dt_value = "{}".format(tags[dt_tag])
                 break
-            except:
+            except Exception:
                 dt_value = False
                 continue
         if dt_value:
@@ -99,7 +97,7 @@ def exif_time(pto, path):
             localtz = pytz.timezone('Europe/Rome')
             local_dt = localtz.localize(photo_time)
             photo_time = local_dt.astimezone(pytz.utc)
-    print photo_time
+    print(photo_time)
     return photo_time.replace(tzinfo=None)
 
 
@@ -114,8 +112,8 @@ def syncphoto(tracks, directory):
     for f in imgfiles:
         print(f)
         ptime = exif_time(f, directory)
-        print(ptime)
-        idx = timepoints.index(min(timepoints, key=lambda x: abs(x[0] - ptime)))
+        print(ptime.replace(tzinfo=None))
+        idx = timepoints.index(min(timepoints, key=lambda x: abs(x[0].replace(tzinfo=None) - ptime)))
         output.append([str(timepoints[idx][1]), str(timepoints[idx][2]), f, '<a data-lightbox="{0}" href="photos/{0}"><img width="200px" src="photos/{0}" /></a>'.format(f)])
     return ''.join(['\t'.join(i) + '\n' for i in output])
 
@@ -125,7 +123,7 @@ def resize(img_in, img_out, basewidth):
     wpercent = basewidth / img.size[0]
     hsize = int(img.size[1] * wpercent)
     print('resizing {} to {} with size ({},{})'.format(img_in, img_out, basewidth, hsize))
-    img_scaled = img.resize((basewidth, hsize), Image.ANTIALIAS)
+    img.resize((basewidth, hsize), Image.ANTIALIAS)
     img.save(img_out)
 
 
@@ -145,7 +143,7 @@ def main():
         print("IO Error: invalid file name {}".format(args.gpxfile))
         sys.exit(-1)
     except gpxpy.gpx.GPXXMLSyntaxException:
-        print "Invalid gpx file format"
+        print("Invalid gpx file format")
         sys.exit(-1)
 
     lon = []
@@ -197,7 +195,7 @@ def main():
         dirn = os.path.basename(args.gpxfile)[:-4]
 
     if os.path.exists(dirn):
-        print "Error creating {}/: directory exists. Remove or rename it".format(dirn)
+        print("Error creating {}/: directory exists. Remove or rename it".format(dirn))
         if not args.show:
             sys.exit(1)
     else:
@@ -234,6 +232,7 @@ def main():
         else:
             print('Automatically closing webserver after 100secs of availability...')
         sys.exit(0)
+
 
 if __name__ == '__main__':
     main()
